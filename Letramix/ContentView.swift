@@ -53,7 +53,7 @@ struct ContentView: View {
         VStack(spacing: 18) {
             HStack { Text(game.players.indices.contains(game.current) ? game.players[game.current].name : "").font(.title.bold()); Spacer(); Text(String(format: "%d:%02d", game.remaining/60, game.remaining%60)).font(.largeTitle.monospacedDigit().bold()).foregroundStyle(purple) }
             ZStack {
-                CameraPreview(session: camera.session)
+                CameraPreview(session: camera.session).overlay { wordOverlay }
                 if camera.permissionDenied { VStack { Text(game.text("Salli kamera iPhonen asetuksista.", "Allow camera in iPhone Settings.")); Button(game.text("Avaa asetukset", "Open Settings")) { if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) } } }.padding().background(.ultraThinMaterial) }
             }.frame(height: 360).background(.black).clipShape(RoundedRectangle(cornerRadius: 20))
             if !camera.message.isEmpty { Text(camera.message).font(.footnote).foregroundStyle(.secondary) }
@@ -74,6 +74,24 @@ struct ContentView: View {
             Text(game.text("Käsialan tunnistus on kokeellinen. Tarkista sanat ennen pisteytystä.", "Handwriting recognition is experimental. Check words before scoring.")).font(.caption).foregroundStyle(.secondary)
             Button(game.text("Lopeta peli ja avaa asetukset", "End game and open settings")) { game.pause(); game.screen = .settings }
         }
+    }
+    var wordOverlay: some View {
+        GeometryReader { geometry in
+            let h = min(geometry.size.height, geometry.size.width * 16 / 9)
+            let w = h * 9 / 16
+            let ox = (geometry.size.width - w) / 2
+            let oy = (geometry.size.height - h) / 2
+            ForEach(camera.words) { found in
+                let rect = found.box
+                let color: Color = game.valid(found.word) ? purple : .orange
+                RoundedRectangle(cornerRadius: 4).stroke(color, lineWidth: 2)
+                    .frame(width: rect.width * w, height: rect.height * h)
+                    .position(x: ox + rect.midX * w, y: oy + (1 - rect.midY) * h)
+                Text(found.word + (game.valid(found.word) ? " +\(found.word.count)" : " ?"))
+                    .font(.caption2.bold()).padding(4).background(.white.opacity(0.9)).foregroundStyle(color)
+                    .position(x: max(40, min(geometry.size.width - 40, ox + rect.midX * w)), y: max(12, oy + (1 - rect.maxY) * h - 12))
+            }
+        }.allowsHitTesting(false)
     }
     @ViewBuilder var wordStatus: some View { if !manual.isEmpty { Text(game.used.contains(game.normalized(manual)) ? game.text("Sana on jo pisteytetty.", "Word already scored.") : game.valid(manual) ? game.text("Sana löytyy ✓", "Word found ✓") : game.text("Ei löydy sanalistasta.", "Not found in word list.")).font(.caption) } }
 }
