@@ -1,0 +1,26 @@
+name: iOS build check
+on:
+  push:
+    branches: [main, native-ios]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  simulator:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Xcode project
+        run: brew install xcodegen && xcodegen generate
+      - name: Build for iPhone simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project Letramix.xcodeproj -scheme Letramix -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tee build.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build-log
+          path: build.log
+          retention-days: 7
