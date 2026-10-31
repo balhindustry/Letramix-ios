@@ -10,6 +10,11 @@ jobs:
     environment: testflight
     steps:
       - uses: actions/checkout@v4
+      - name: Select newest installed Xcode
+        run: |
+          XCODE_APP=$(python3 -c 'import glob,re; paths=glob.glob("/Applications/Xcode_*.app"); assert paths, "No versioned Xcode installation found"; print(max(paths, key=lambda p: tuple(map(int,re.findall(r"\d+",p)))))')
+          sudo xcode-select --switch "$XCODE_APP/Contents/Developer"
+          xcodebuild -version
       - run: brew install xcodegen && xcodegen generate
       - name: Sign and upload
         env:
