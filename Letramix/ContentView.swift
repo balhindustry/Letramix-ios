@@ -6,6 +6,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scene
     @StateObject private var camera = CameraModel()
     @State private var manual = ""
+    @State private var jokerPattern = ""
     @State private var correcting = false
     @State private var showingLicenses = false
     let purple = Color(red: 0.46, green: 0.36, blue: 0.82)
@@ -21,7 +22,7 @@ struct ContentView: View {
         .onReceive(clock) { _ in game.tick() }
         .onChange(of: game.screen) { _, next in if next == .game { camera.start(language: game.language) } else { camera.stop() } }
         .onChange(of: scene) { _, phase in if phase != .active { game.pause(); camera.stop() } else if game.screen == .game { camera.start(language: game.language) } }
-        .sheet(isPresented: $correcting) { NavigationStack { Form { TextField(game.text("Korjaa sana", "Correct word"), text: $manual).textInputAutocapitalization(.characters).autocorrectionDisabled(); wordStatus; Button(game.text("Hyväksy pisteet", "Accept points")) { game.score(manual); correcting = false }.disabled(!game.canScore(manual)) }.navigationTitle(game.text("Tarkista sana", "Check word")).toolbar { Button(game.text("Sulje", "Close")) { correcting = false } } } }
+        .sheet(isPresented: $correcting) { NavigationStack { Form { TextField(game.text("Korjaa sana", "Correct word"), text: $manual).textInputAutocapitalization(.characters).autocorrectionDisabled(); wordStatus; jokerChoices; Button(game.text("Hyväksy pisteet", "Accept points")) { game.score(manual, pattern: jokerPattern); manual = ""; jokerPattern = ""; correcting = false }.disabled(!game.canScore(manual, pattern: jokerPattern)) }.navigationTitle(game.text("Tarkista sana", "Check word")).toolbar { Button(game.text("Sulje", "Close")) { correcting = false } } } }
         .sheet(isPresented: $showingLicenses) { NavigationStack { ScrollView { Text(notices).padding() }.navigationTitle("Licenses").toolbar { Button("OK") { showingLicenses = false } } } }
     }
     var notices: String { guard let url = Bundle.main.url(forResource: "NOTICES", withExtension: "txt") else { return "License file missing" }; return (try? String(contentsOf: url, encoding: .utf8)) ?? "License file unreadable" }
@@ -44,7 +45,7 @@ struct ContentView: View {
             ForEach(0..<game.playerCount, id: \.self) { i in TextField(game.text("Pelaaja", "Player") + " \(i+1)", text: $game.names[i]).textFieldStyle(.roundedBorder) }
             Text(game.text("Aikaa per vuoro", "Time per turn")).font(.headline)
             Picker("Time", selection: $game.duration) { ForEach([30,60,90,120], id: \.self) { t in Text("\(t) s").tag(t) } }.pickerStyle(.segmented)
-            Text(game.text("Vähintään 2 kirjainta · 1 kirjain = 1 piste", "At least 2 letters · 1 letter = 1 point")).font(.footnote)
+            Text(game.text("Vähintään 2 kirjainta · Pisteet kirjainlaattojen mukaan · ◇ = 0", "At least 2 letters · Tile values · ◇ = 0")).font(.footnote)
             if game.dictionaryError { Text(game.text("Sanastojen lataus epäonnistui.", "Word lists failed to load.")).foregroundStyle(.red) }
             Button(game.dictionaryReady ? game.text("Siirry peliin →", "Go to game →") : game.text("Ladataan sanastoja…", "Loading words…")) { game.begin() }.buttonStyle(.borderedProminent).controlSize(.large).disabled(!game.dictionaryReady)
         }.padding().background(.white).clipShape(RoundedRectangle(cornerRadius: 20))
@@ -63,15 +64,16 @@ struct ContentView: View {
             if camera.words.isEmpty { Text(game.text("Osoita selkeitä kirjaimia. Kamera lukee jatkuvasti.", "Point at clear letters. The camera reads continuously.")).font(.footnote).foregroundStyle(.secondary) }
             ForEach(camera.words) { found in
                 HStack {
-                    Button { manual = found.word; correcting = true } label: { VStack(alignment: .leading) { Text(found.word).font(.title3.bold()); Text(game.valid(found.word) ? game.text("Sana löytyy ✓", "Word found ✓") : game.text("Tarkista sana", "Check word")).font(.caption) } }
+                    Button { manual = found.word; jokerPattern = found.word.contains("◇") ? found.word : ""; correcting = true } label: { VStack(alignment: .leading) { Text(found.word).font(.title3.bold()); Text(game.valid(found.word) ? game.text("Sana löytyy ✓", "Word found ✓") : game.text("Tarkista sana", "Check word")).font(.caption) } }
                     Spacer()
-                    Button(game.used.contains(game.normalized(found.word)) ? "✓" : "+\(found.word.count)") { game.score(found.word) }.buttonStyle(.borderedProminent).disabled(!game.canScore(found.word))
+                    Button(game.used.contains(game.normalized(found.word)) ? "✓" : "+\(game.points(found.word))") { game.score(found.word) }.buttonStyle(.borderedProminent).disabled(!game.canScore(found.word))
                 }.padding().background(.white).clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            HStack { TextField(game.text("Kirjoita tai korjaa sana", "Type or correct a word"), text: $manual).textFieldStyle(.roundedBorder).textInputAutocapitalization(.characters).autocorrectionDisabled(); Button("+\(game.normalized(manual).count)") { game.score(manual); manual = "" }.disabled(!game.canScore(manual)) }
+            HStack { TextField(game.text("Kirjoita tai korjaa sana", "Type or correct a word"), text: $manual).textFieldStyle(.roundedBorder).textInputAutocapitalization(.characters).autocorrectionDisabled(); Button("+\(game.points(jokerPattern.isEmpty ? manual : jokerPattern))") { game.score(manual, pattern: jokerPattern); manual = ""; jokerPattern = "" }.disabled(!game.canScore(manual, pattern: jokerPattern)) }
             wordStatus
+            jokerChoices
             ForEach(game.players) { p in HStack { Text(p.name); Spacer(); Text("\(p.points)").bold() }.padding().background(.white).clipShape(RoundedRectangle(cornerRadius: 12)) }
-            Text(game.text("Käsialan tunnistus on kokeellinen. Tarkista sanat ennen pisteytystä.", "Handwriting recognition is experimental. Check words before scoring.")).font(.caption).foregroundStyle(.secondary)
+            Text(game.text("Järjestä sana vaakasuoraan ja kirjaimet samaan suuntaan. Tarkista tunnistus ja hyväksy pisteet. ◇ korvaa yhden kirjaimen (0 p).", "Arrange a word horizontally with upright letters. Check recognition and accept points. ◇ replaces one letter (0 points).")).font(.caption).foregroundStyle(.secondary)
             Button(game.text("Lopeta peli ja avaa asetukset", "End game and open settings")) { game.pause(); game.screen = .settings }
         }
     }
@@ -87,11 +89,19 @@ struct ContentView: View {
                 RoundedRectangle(cornerRadius: 4).stroke(color, lineWidth: 2)
                     .frame(width: rect.width * w, height: rect.height * h)
                     .position(x: ox + rect.midX * w, y: oy + (1 - rect.midY) * h)
-                Text(found.word + (game.valid(found.word) ? " +\(found.word.count)" : " ?"))
+                Text(found.word + (game.valid(found.word) ? " +\(game.points(found.word))" : " ?"))
                     .font(.caption2.bold()).padding(4).background(.white.opacity(0.9)).foregroundStyle(color)
                     .position(x: max(40, min(geometry.size.width - 40, ox + rect.midX * w)), y: max(12, oy + (1 - rect.maxY) * h - 12))
             }
         }.allowsHitTesting(false)
+    }
+    @ViewBuilder var jokerChoices: some View {
+        if manual.contains("◇") {
+            Text(game.text("Valitse jokerin muodostama sana:", "Choose the word represented by the joker:"))
+            ForEach(game.matches(manual), id: \.self) { option in
+                Button(option.uppercased()) { jokerPattern = manual; manual = option.uppercased() }
+            }
+        }
     }
     @ViewBuilder var wordStatus: some View { if !manual.isEmpty { Text(game.used.contains(game.normalized(manual)) ? game.text("Sana on jo pisteytetty.", "Word already scored.") : game.valid(manual) ? game.text("Sana löytyy ✓", "Word found ✓") : game.text("Ei löydy sanalistasta.", "Not found in word list.")).font(.caption) } }
 }

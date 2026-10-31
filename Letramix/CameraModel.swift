@@ -54,16 +54,45 @@ final class CameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSam
         do {
             try VNImageRequestHandler(cvPixelBuffer: pixel, orientation: .up).perform([request])
             var found: [String: FoundWord] = [:]
+            var fragments: [FoundWord] = []
             for observation in request.results ?? [] {
                 guard let candidate = observation.topCandidates(1).first else { continue }
                 let text = candidate.string
-                let regex = try NSRegularExpression(pattern: "[A-Za-zÅÄÖåäö]{2,}")
+                let regex = try NSRegularExpression(pattern: "[A-Za-zÅÄÖåäö◇◊♢]+")
                 for match in regex.matches(in: text, range: NSRange(text.startIndex..., in: text)) {
                     guard let range = Range(match.range, in: text) else { continue }
-                    let word = String(text[range]).uppercased()
+                    let word = String(text[range]).uppercased().replacingOccurrences(of: "◊", with: "◇").replacingOccurrences(of: "♢", with: "◇")
                     let rect = (try? candidate.boundingBox(for: range))?.boundingBox ?? observation.boundingBox
-                    if found[word] == nil { found[word] = FoundWord(word: word, box: rect, confidence: candidate.confidence) }
+                    fragments.append(FoundWord(word: word, box: rect, confidence: candidate.confidence))
                 }
+            }
+            // No colour filtering: blue and black tiles use the same recognition path.
+            // Group nearby OCR fragments on the same baseline; never join scattered tiles.
+            var rows: [[FoundWord]] = []
+            for fragment in fragments.sorted(by: { $0.box.midY > $1.box.midY }) {
+                if let index = rows.firstIndex(where: { row in
+                    guard let first = row.first else { return false }
+                    return abs(first.box.midY - fragment.box.midY) < min(first.box.height, fragment.box.height) * 0.45
+                }) { rows[index].append(fragment) } else { rows.append([fragment]) }
+            }
+            func save(_ run: [FoundWord]) {
+                let word = run.map(\.word).joined()
+                guard word.count >= 2, let first = run.first else { return }
+                let box = run.dropFirst().reduce(first.box) { $0.union($1.box) }
+                found[word] = FoundWord(word: word, box: box, confidence: run.map(\.confidence).min() ?? 0)
+            }
+            for row in rows {
+                var run: [FoundWord] = []
+                for fragment in row.sorted(by: { $0.box.minX < $1.box.minX }) {
+                    if let previous = run.last {
+                        let gap = fragment.box.minX - previous.box.maxX
+                        if gap > max(previous.box.height, fragment.box.height) * 1.25 || gap < -min(previous.box.width, fragment.box.width) * 0.25 {
+                            save(run); run = []
+                        }
+                    }
+                    run.append(fragment)
+                }
+                save(run)
             }
             guard enabled, ticket == epoch else { return }
             let result = found.values.sorted { $0.word < $1.word }
