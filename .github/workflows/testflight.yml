@@ -20,7 +20,6 @@ jobs:
           APPLE_PROFILE_BASE64: ${{ secrets.APPLE_PROFILE_BASE64 }}
           ASC_PRIVATE_KEY_BASE64: ${{ secrets.ASC_PRIVATE_KEY_BASE64 }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: bash scripts/testflight.sh
       - name: Remove signing material
         if: always()

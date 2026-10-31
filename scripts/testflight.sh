@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 # No tracing: never print signing credentials or API keys.
-for name in APPLE_TEAM_ID BUNDLE_ID APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_PROFILE_BASE64 ASC_PRIVATE_KEY_BASE64 ASC_KEY_ID ASC_ISSUER_ID; do
+for name in APPLE_TEAM_ID BUNDLE_ID APPLE_CERTIFICATE_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_PROFILE_BASE64 ASC_PRIVATE_KEY_BASE64 ASC_KEY_ID; do
   if [[ -z "${!name:-}" ]]; then echo "Missing required GitHub secret or variable: $name"; exit 1; fi
 done
 SIGNING_DIR="$RUNNER_TEMP/letramix-signing"
@@ -10,6 +10,10 @@ printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$SIGNING_DIR/certif
 printf '%s' "$APPLE_PROFILE_BASE64" | base64 --decode > "$SIGNING_DIR/profile.mobileprovision"
 printf '%s' "$ASC_PRIVATE_KEY_BASE64" | base64 --decode > "$SIGNING_DIR/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 chmod 600 "$SIGNING_DIR/private_keys/"*.p8 "$SIGNING_DIR/certificate.p12"
+if ! openssl pkey -in "$SIGNING_DIR/private_keys/AuthKey_${ASC_KEY_ID}.p8" -noout 2>/dev/null; then
+  echo 'ASC_PRIVATE_KEY_BASE64 must contain the Base64-encoded Apple .p8 file, not a command or transcript.'
+  exit 1
+fi
 security cms -D -i "$SIGNING_DIR/profile.mobileprovision" > "$SIGNING_DIR/profile.plist"
 PROFILE_UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$SIGNING_DIR/profile.plist")
 PROFILE_APP=$(/usr/libexec/PlistBuddy -c 'Print Entitlements:application-identifier' "$SIGNING_DIR/profile.plist")
@@ -32,4 +36,6 @@ with open(os.environ['RUNNER_TEMP']+'/letramix-signing/export.plist','wb') as f:
 PY
 xcodebuild -project Letramix.xcodeproj -scheme Letramix -destination 'generic/platform=iOS' -archivePath build/Letramix.xcarchive DEVELOPMENT_TEAM="$APPLE_TEAM_ID" PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY='Apple Distribution' PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" archive
 xcodebuild -exportArchive -archivePath build/Letramix.xcarchive -exportPath build/export -exportOptionsPlist "$SIGNING_DIR/export.plist"
-API_PRIVATE_KEYS_DIR="$SIGNING_DIR/private_keys" xcrun altool --upload-app --type ios --file build/export/Letramix.ipa --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_ISSUER_ID"
+# Individual keys use the user subject. altool still requires an issuer argument;
+# use the key ID placeholder, matching Fastlane's individual-key implementation.
+API_PRIVATE_KEYS_DIR="$SIGNING_DIR/private_keys" xcrun altool --upload-app --type ios --file build/export/Letramix.ipa --apiKey "$ASC_KEY_ID" --apiIssuer "$ASC_KEY_ID" --api-key-subject user
