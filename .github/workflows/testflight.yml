@@ -13,7 +13,7 @@ jobs:
       - run: brew install xcodegen && xcodegen generate
       - name: Sign and upload
         env:
-          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID || secrets.APPLE_TEAM_ID }}
           BUNDLE_ID: ${{ vars.BUNDLE_ID || 'fi.balh.letramix' }}
           APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
