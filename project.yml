@@ -19,7 +19,7 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fi.balh.letters
+        PRODUCT_BUNDLE_IDENTIFIER: fi.balh.letramix
         TARGETED_DEVICE_FAMILY: '1'
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: BALH Letters
