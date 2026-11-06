@@ -22,7 +22,7 @@ final class CameraModel: NSObject, ObservableObject, AVCaptureVideoDataOutputSam
     @Published var torchOn = false
     @Published private(set) var torchAvailable = false
 
-    private let queue = DispatchQueue(label: "letramix.camera")
+    private let queue = DispatchQueue(label: "balhletters.camera")
     private var device: AVCaptureDevice?
     private var configured = false
     private var enabled = false

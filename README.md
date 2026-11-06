@@ -1,4 +1,6 @@
-# LETRAMIX for iPhone — v0.2
+# BALH Letters for iPhone — v0.3
+
+Formerly the LETRAMIX prototype. Renamed in 0.3 with its own look (ink navy, teal, coral; flat white tiles) and a new icon to avoid any resemblance to existing word-game brands. Bundle ID is now `fi.balh.letters`.
 
 Native SwiftUI word game: welcome → FI/EN setup → 1–6 players → 30–180 s turns → live rear camera reads the tiles → every correct word scores. iOS 17+, portrait iPhone. AVFoundation + Apple Vision on device; no web view, cloud OCR, upload or login. Offline word lists are bundled. No camera image is ever saved.
 
@@ -27,27 +29,27 @@ Camera accuracy needs a physical iPhone test; clear block capitals work best. Wo
 
 ## Tests
 
-`swiftc -O Letramix/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks Letramix/Resources` (macOS or Linux). The GitHub **iOS build check** runs this before building.
+`swiftc -O BALHLetters/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks BALHLetters/Resources` (macOS or Linux). The GitHub **iOS build check** runs this before building.
 
 ## Windows workflow
 
 1. Push the branch or open its pull request. **Actions → iOS build check** compiles the simulator app on macOS. This does not install on an iPhone.
-2. Create the iOS app in App Store Connect. The default bundle ID is `fi.balh.letramix`; choose your own registered ID if needed.
+2. Create the iOS app in App Store Connect. The default bundle ID is `fi.balh.letters`; choose your own registered ID if needed.
 3. In this repository store the credentials below under **Settings → Secrets and variables → Actions**, never in source or chat. The upload job uses the **testflight** environment; environment-scoped secrets can also be used.
 4. Merge the workflows to the default branch once reviewed. **Actions → Upload to TestFlight → Run workflow** builds, signs and uploads the selected branch. It never uploads on ordinary pushes.
 5. Wait for Apple's processing, complete any required export-compliance details, then add the build to your internal TestFlight tester group.
 
-Variables: `APPLE_TEAM_ID`, `BUNDLE_ID` (optional, defaults to `fi.balh.letramix`).
+Variables: `APPLE_TEAM_ID`, `BUNDLE_ID` (optional, defaults to `fi.balh.letters`).
 
 Secrets:
 - `APPLE_CERTIFICATE_BASE64`: Base64 Apple Distribution `.p12` certificate **including its private key**.
 - `APPLE_CERTIFICATE_PASSWORD`: that certificate's password.
 - `APPLE_PROFILE_BASE64`: Base64 App Store distribution provisioning profile matching the team and bundle ID.
 - `ASC_PRIVATE_KEY_BASE64`: Base64 App Store Connect API `.p8` private key.
-- `ASC_KEY_ID`: the individual App Store Connect API key ID. The user owning this key must have upload access to LETRAMIX. An issuer ID is not needed for this individual-key workflow.
+- `ASC_KEY_ID`: the individual App Store Connect API key ID. The user owning this key must have upload access to BALH Letters. An issuer ID is not needed for this individual-key workflow.
 
 A developer membership alone does not populate these secrets. The simulator check needs no Apple credentials. Upload has not been tested until actual signing assets are configured.
 
 ## Local development on a Mac
 
-`brew install xcodegen`, `xcodegen generate`, then open `Letramix.xcodeproj`. The project is generated from `project.yml`. Do not commit certificates, API keys, profiles or archives. See `Letramix/Resources/NOTICES.txt` for word-list attribution and licenses.
+`brew install xcodegen`, `xcodegen generate`, then open `BALHLetters.xcodeproj`. The project is generated from `project.yml`. Do not commit certificates, API keys, profiles or archives. See `BALHLetters/Resources/NOTICES.txt` for word-list attribution and licenses.

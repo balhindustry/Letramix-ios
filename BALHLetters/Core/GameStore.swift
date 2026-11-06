@@ -10,7 +10,7 @@ struct GameStore {
 
     init(directory: URL? = nil) {
         let base = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Letramix", isDirectory: true)
+            .appendingPathComponent("BALHLetters", isDirectory: true)
         self.directory = base
         try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
     }

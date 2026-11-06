@@ -13,7 +13,7 @@ struct TurnWords: View {
                     Text(model.text("Tämän vuoron sanat", "Words this turn")).font(.headline)
                     Spacer()
                     Text(model.text("\(game.pending.count) sanaa · \(game.pendingPoints) p", "\(game.pending.count) words · \(game.pendingPoints) p"))
-                        .font(.subheadline.bold()).foregroundStyle(Theme.purple)
+                        .font(.subheadline.bold()).foregroundStyle(Theme.accent)
                 }
                 if game.pending.isEmpty {
                     Text(model.text("Ei vielä sanoja.", "No words yet.")).font(.footnote).foregroundStyle(.secondary)
@@ -39,7 +39,7 @@ struct WordRow: View {
                     Text(word.kind.label(model))
                     if word.fromCamera { Image(systemName: "camera.fill") }
                 }
-                .font(.caption2).foregroundStyle(word.kind == .house ? Theme.orange : .secondary)
+                .font(.caption2).foregroundStyle(word.kind == .house ? Theme.coral : .secondary)
             }
             Spacer()
             Text("+\(word.points)").font(.headline.monospacedDigit()).foregroundStyle(Theme.green)
@@ -119,7 +119,7 @@ struct WordEntry: View {
                 }
             }
         case .notFound?:
-            Text(model.text("Ei löydy sanastosta.", "Not in the word list.")).font(.caption).foregroundStyle(Theme.orange)
+            Text(model.text("Ei löydy sanastosta.", "Not in the word list.")).font(.caption).foregroundStyle(Theme.coral)
             if model.game?.rules.allowHouseWords == true && !text.contains(jokerSymbol) {
                 Button(model.text("Hyväksy silti – kaikki pelaajat samaa mieltä", "Accept anyway – all players agree")) {
                     if case .saved = model.add(text, house: true) { text = "" }
@@ -184,7 +184,7 @@ struct Scoreboard: View {
                 Text(model.text("Pisteet", "Scores")).font(.headline)
                 ForEach(Array(game.players.enumerated()), id: \.element.id) { index, player in
                     HStack {
-                        if index == game.current && game.phase != .finished { Image(systemName: "arrowtriangle.right.fill").font(.caption).foregroundStyle(Theme.purple) }
+                        if index == game.current && game.phase != .finished { Image(systemName: "arrowtriangle.right.fill").font(.caption).foregroundStyle(Theme.accent) }
                         Text(player.name).fontWeight(index == game.current ? .bold : .regular)
                         Spacer()
                         Text(model.text("\(game.words(of: index).count) sanaa", "\(game.words(of: index).count) words")).font(.caption).foregroundStyle(.secondary)

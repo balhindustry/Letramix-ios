@@ -1,6 +1,6 @@
 import Foundation
 
-// Run: swiftc Letramix/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks Letramix/Resources
+// Run: swiftc BALHLetters/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks BALHLetters/Resources
 var failures = 0
 func check(_ condition: @autoclosure () -> Bool, _ label: String, line: Int = #line) {
     if !condition() { failures += 1; print("FAIL line \(line): \(label)") }
@@ -16,7 +16,7 @@ func check(_ condition: @autoclosure () -> Bool, _ label: String, line: Int = #l
         check(TileRules.points("KALA") == 5, "KALA"); check(TileRules.points("K◇LA") == 4, "K◇LA")
         check(TileRules.points("◇◊♢") == 0, "jokers"); check(TileRules.points("äöå") == 14, "lower-case")
 
-        let dir = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "Letramix/Resources"
+        let dir = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "BALHLetters/Resources"
         func load(_ code: String) -> Lexicon {
             let text = (try? String(contentsOfFile: dir + "/\(code).txt", encoding: .utf8)) ?? ""
             return Lexicon(language: code, text: text)
@@ -81,7 +81,7 @@ func check(_ condition: @autoclosure () -> Bool, _ label: String, line: Int = #l
         check(early.players[0].points == TileRules.points("KALA") && early.phase == .finished, "end mid-turn keeps words")
 
         // Persistence round-trip
-        let tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("letramix-\(UUID().uuidString)")
+        let tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("balhletters-\(UUID().uuidString)")
         let store = GameStore(directory: tmp)
         store.saveCurrent(game); store.saveHistory([game])
         check(store.loadCurrent()?.turns.count == 2, "current game restored")

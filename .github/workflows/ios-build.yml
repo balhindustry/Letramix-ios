@@ -13,13 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify game rules, word lists and scoring
-        run: swiftc -O Letramix/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks Letramix/Resources
+        run: swiftc -O BALHLetters/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks BALHLetters/Resources
       - name: Generate Xcode project
         run: brew install xcodegen && xcodegen generate
       - name: Build for iPhone simulator
         run: |
           set -o pipefail
-          xcodebuild -project Letramix.xcodeproj -scheme Letramix -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tee build.log
+          xcodebuild -project BALHLetters.xcodeproj -scheme BALHLetters -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build CODE_SIGNING_ALLOWED=NO build | tee build.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

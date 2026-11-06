@@ -84,7 +84,7 @@ struct HistoryView: View {
                 ForEach(model.history) { game in
                     NavigationLink {
                         ScrollView { GameSummary(game: game).padding() }
-                            .background(Theme.cream)
+                            .background(Theme.paper)
                             .navigationTitle(game.startedAt.formatted(date: .abbreviated, time: .shortened))
                     } label: {
                         VStack(alignment: .leading, spacing: 4) {

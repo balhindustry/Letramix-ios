@@ -7,7 +7,7 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            Theme.cream.ignoresSafeArea()
+            Theme.paper.ignoresSafeArea()
             switch model.screen {
             case .welcome: WelcomeView()
             case .setup: SetupView()
@@ -16,7 +16,7 @@ struct ContentView: View {
             case .history: HistoryView()
             }
         }
-        .tint(Theme.purple)
+        .tint(Theme.accent)
         .animation(.easeInOut(duration: 0.2), value: model.screen)
         .onReceive(clock) { _ in model.tick() }
         .onChange(of: scene) { _, phase in if phase == .background { model.pause() } }
@@ -32,7 +32,10 @@ struct WelcomeView: View {
             VStack(spacing: 26) {
                 HStack { Spacer(); LanguagePicker() }
                 Spacer(minLength: 30)
-                HStack(spacing: 6) { ForEach(Array("LETRAMIX".enumerated()), id: \.offset) { TileView(letter: $0.element, size: 38) } }
+                VStack(spacing: 10) {
+                    HStack(spacing: 8) { ForEach(Array("BALH".enumerated()), id: \.offset) { TileView(letter: $0.element, size: 50) } }
+                    Text("LETTERS").font(.system(size: 30, weight: .black, design: .rounded)).tracking(10).foregroundStyle(Theme.accent)
+                }
                 Text(model.text("Sanoista syntyy peli.", "Let the words play."))
                     .font(.largeTitle.bold()).multilineTextAlignment(.center)
                 Text(model.text("Muodosta sanoja laatoista. Kamera tallentaa sanat, ja vuoron lopussa jokainen oikea sana tuo pisteet.",
@@ -49,7 +52,7 @@ struct WelcomeView: View {
                         }.buttonStyle(PrimaryButton())
                     }
                     Button(model.text("Uusi peli", "New game")) { model.screen = .setup }
-                        .buttonStyle(PrimaryButton(color: model.hasUnfinishedGame ? Theme.purpleDark : Theme.purple))
+                        .buttonStyle(PrimaryButton(color: model.hasUnfinishedGame ? Theme.ink : Theme.accent))
                     if !model.history.isEmpty {
                         Button(model.text("Pelihistoria (\(model.history.count))", "Game history (\(model.history.count))")) { model.screen = .history }
                             .font(.headline).padding(.top, 4)

@@ -65,7 +65,7 @@ struct PlayView: View {
             Spacer()
             Text(String(format: "%d:%02d", game.remaining / 60, game.remaining % 60))
                 .font(.system(size: 40, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(game.remaining <= 5 && game.phase == .running ? Theme.orange : Theme.purple)
+                .foregroundStyle(game.remaining <= 5 && game.phase == .running ? Theme.coral : Theme.accent)
             Menu {
                 Button(model.text("Alkuun (peli tallessa)", "Home (game is saved)"), systemImage: "house") { model.leaveToHome() }
                 Button(model.text("Lopeta peli", "End game"), systemImage: "flag.checkered", role: .destructive) { confirmEnd = true }
@@ -129,7 +129,7 @@ struct PlayView: View {
                 Label(game.phase == .running ? model.text("Tauko", "Pause") : game.phase == .paused ? model.text("Jatka", "Resume") : model.text("Aloita", "Start"),
                       systemImage: game.phase == .running ? "pause.fill" : "play.fill")
             }
-            .buttonStyle(PrimaryButton(color: game.phase == .running ? Theme.purpleDark : Theme.purple))
+            .buttonStyle(PrimaryButton(color: game.phase == .running ? Theme.ink : Theme.accent))
             Button { model.finishTurnEarly() } label: { Label(model.text("Valmis", "Done"), systemImage: "checkmark") }
                 .buttonStyle(PrimaryButton(color: Theme.green))
                 .frame(maxWidth: 140)
@@ -181,10 +181,10 @@ enum WordStatus: Equatable {
     var color: Color {
         switch self {
         case .saved: return Theme.green
-        case .valid: return Theme.purple
+        case .valid: return Theme.accent
         case .played, .tooShort: return .gray
-        case .choose: return Theme.purple
-        case .notFound: return Theme.orange
+        case .choose: return Theme.accent
+        case .notFound: return Theme.coral
         }
     }
     @MainActor func label(_ model: GameModel) -> String {
@@ -207,7 +207,7 @@ struct TimerBar: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule().fill(Color.black.opacity(0.08))
-                Capsule().fill(remaining <= 5 ? Theme.orange : Theme.purple)
+                Capsule().fill(remaining <= 5 ? Theme.coral : Theme.accent)
                     .frame(width: geo.size.width * CGFloat(max(0, min(1, Double(remaining) / Double(max(total, 1))))))
                     .animation(.linear(duration: running ? 1 : 0.2), value: remaining)
             }

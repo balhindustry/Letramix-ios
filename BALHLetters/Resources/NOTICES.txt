@@ -1,8 +1,8 @@
-LETRAMIX word lists
+BALH Letters word lists
 
 Finnish: Kotimaisten kielten keskus, Nykysuomen sanalista 2024. Downloaded 2026-10-29. CC BY 4.0: https://creativecommons.org/licenses/by/4.0/
 Source: https://kaino.kotus.fi/lataa/nykysuomensanalista2024.txt
-Changes: lower-case alphabetic entries of 2+ letters; excludes uppercase entries and error code 100; deduplicated. LETRAMIX addition: on. Not all inflected Finnish forms are included.
+Changes: lower-case alphabetic entries of 2+ letters; excludes uppercase entries and error code 100; deduplicated. BALH Letters addition: on. Not all inflected Finnish forms are included.
 
 English: ESDB/SCOWL, size 60, A,B, variant level 1, excludes abbreviations, restricted to lowercase a-z entries of 2+ letters. Source: https://github.com/en-wl/wordlist . Downloaded 2026-10-29.
 

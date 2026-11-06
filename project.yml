@@ -1,4 +1,4 @@
-name: Letramix
+name: BALHLetters
 options:
   bundleIdPrefix: fi.balh
   deploymentTarget:
@@ -6,30 +6,30 @@ options:
 settings:
   base:
     SWIFT_VERSION: '5.0'
-    MARKETING_VERSION: '0.2.0'
+    MARKETING_VERSION: '0.3.0'
     CURRENT_PROJECT_VERSION: '1'
 targets:
-  Letramix:
+  BALHLetters:
     type: application
     platform: iOS
     sources:
-      - path: Letramix
+      - path: BALHLetters
         excludes: [Resources]
-      - path: Letramix/Resources
+      - path: BALHLetters/Resources
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: fi.balh.letramix
+        PRODUCT_BUNDLE_IDENTIFIER: fi.balh.letters
         TARGETED_DEVICE_FAMILY: '1'
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: LETRAMIX
-        INFOPLIST_KEY_NSCameraUsageDescription: 'LETRAMIX lukee kameralla pelin kirjaimet ja sanat. Kuvat käsitellään vain puhelimessa.'
+        INFOPLIST_KEY_CFBundleDisplayName: BALH Letters
+        INFOPLIST_KEY_NSCameraUsageDescription: 'BALH Letters lukee kameralla pelin kirjaimet ja sanat. Kuvat käsitellään vain puhelimessa.'
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
 schemes:
-  Letramix:
+  BALHLetters:
     build:
       targets:
-        Letramix: all
+        BALHLetters: all
