@@ -1,10 +1,33 @@
-# LETRAMIX for iPhone
+# LETRAMIX for iPhone — v0.2
 
-Native SwiftUI prototype: welcome → FI/EN setup → 1–6 players → 30/60/90/120-second turns → live rear camera and word scoring. iOS 17+, portrait iPhone. Uses AVFoundation + Apple Vision on device; no web view, cloud OCR, photo upload or account login. Offline word lists are bundled. No recording is saved.
+Native SwiftUI word game: welcome → FI/EN setup → 1–6 players → 30–180 s turns → live rear camera reads the tiles → every correct word scores. iOS 17+, portrait iPhone. AVFoundation + Apple Vision on device; no web view, cloud OCR, upload or login. Offline word lists are bundled. No camera image is ever saved.
+
+## How a turn works
+
+1. Press **Aloita / Start** — the clock runs.
+2. Lay words on the table. When the camera has read a word twice and it is in the word list, it is **saved to the turn automatically** (green ✓ + "+5 KALA"). Words can also be typed; the **◇** key inserts a joker.
+3. When time runs out (or **Valmis / Done**), the review screen lists every saved word with its points. Remove misreads with ✕, add any word the camera missed, then **accept**: *all* saved words score at once (10 correct words in a minute = points for all 10).
+4. Next player. After the last round the results screen shows the ranking, best word and every player's words.
+
+Rules: at least 2 letters · points by tile value (`Core/TileRules.swift`), ◇ = 0 · each word scores once per game · a joker word asks which word it stands for when there are several options.
+
+## What changed in 0.2 (from the Codex prototype)
+
+- **Scoring fixed**: words are collected during the turn and all scored at the end, instead of one tap per word that only worked while the clock ran.
+- **Word history**: per-turn word list, per-player word list, results screen, and a saved **game history**. The game in progress is saved continuously and can be continued after closing the app.
+- **Finnish inflected forms** are accepted (KALAT, TALOSSA, KADULLA, PUHUU…) — the Kotus list only has base forms. Optional "accept anyway" house rule for anything else.
+- Rounds (1/2/3/5/∞), early "Done", end-game with results, rematch.
+- Camera: 1080p, near-focus, two-read stability filter against OCR noise, flashlight button, coloured overlay (saved / valid / already played / not found).
+- Jokers: works with inflected forms, fast lookup (no scanning of 100 000 words), dedicated ◇ key.
+- Code split into `Core/` (pure Swift rules, testable anywhere) and `Views/`; `tests/CoreChecks.swift` runs in CI.
 
 ## Current limits
 
-This is an initial prototype, not a TestFlight release. GitHub's `iOS build check` must pass before signing. Camera performance and handwriting accuracy require a physical iPhone test. Clear block capitals are the first target. Arbitrary rotated/intersecting cube grids and full Finnish morphology are not yet implemented. The Vision language selection uses the languages supported by the device/OS, with English fallback if Finnish is unavailable; Finnish dictionary validation is separate. Recognition suggestions are never auto-scored. Each word scores at most once per game. Tap a detected word to edit it.
+Camera accuracy needs a physical iPhone test; clear block capitals work best. Words must be horizontal with upright letters. Finnish forms are a heuristic: common noun cases, plurals, possessives, clitics and simple verb forms; rare stem types need the house rule.
+
+## Tests
+
+`swiftc -O Letramix/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks Letramix/Resources` (macOS or Linux). The GitHub **iOS build check** runs this before building.
 
 ## Windows workflow
 

@@ -12,8 +12,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Verify tile scoring
-        run: swiftc Letramix/TileRules.swift tests/TileRulesChecks.swift -o /tmp/tile-checks && /tmp/tile-checks
+      - name: Verify game rules, word lists and scoring
+        run: swiftc -O Letramix/Core/*.swift tests/CoreChecks.swift -o /tmp/core-checks && /tmp/core-checks Letramix/Resources
       - name: Generate Xcode project
         run: brew install xcodegen && xcodegen generate
       - name: Build for iPhone simulator
