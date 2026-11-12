@@ -50,13 +50,27 @@ struct TileView: View {
     }
 }
 
+/// A word as tiles. Long words shrink their tiles to fit the available width instead of
+/// pushing the whole screen wider (13-letter words on a narrow phone).
 struct TileWord: View {
     let word: String
     var size: CGFloat = 26
     var body: some View {
-        HStack(spacing: size * 0.14) {
-            ForEach(Array(word.uppercased().enumerated()), id: \.offset) { TileView(letter: $0.element, size: size) }
+        ViewThatFits(in: .horizontal) {
+            row(size)
+            row(size * 0.82)
+            row(size * 0.68)
+            row(size * 0.56)
+            row(size * 0.46)
+            Text(word.uppercased()).font(.system(size: size * 0.6, weight: .bold)).lineLimit(1).minimumScaleFactor(0.4)
         }
+    }
+    private func row(_ s: CGFloat) -> some View {
+        HStack(spacing: s * 0.14) {
+            ForEach(Array(word.uppercased().enumerated()), id: \.offset) { TileView(letter: $0.element, size: s) }
+        }
+        .padding(.bottom, max(2, s * 0.07))   // room for the tile edge shadow
+        .fixedSize()
     }
 }
 
@@ -66,7 +80,7 @@ struct WordChip: View {
     var onRemove: (() -> Void)?
     var body: some View {
         HStack(spacing: 8) {
-            Text(word.tiles).font(.system(.subheadline).weight(.semibold)).tracking(1).lineLimit(1).fixedSize()
+            Text(word.tiles).font(.system(.subheadline).weight(.semibold)).tracking(1).lineLimit(1).minimumScaleFactor(0.6)
             Text("+\(word.points)").font(.caption.bold()).foregroundStyle(Theme.green)
             if word.kind == .house { Image(systemName: "hand.raised.fill").font(.caption2).foregroundStyle(Theme.coral) }
             if let onRemove {
@@ -114,7 +128,8 @@ struct FlowLayout: Layout {
         let width = proposal.width ?? 320
         var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
         for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
+            var size = view.sizeThatFits(.unspecified)
+            size.width = min(size.width, width)
             if x + size.width > width, x > 0 { x = 0; y += rowHeight + spacing; rowHeight = 0 }
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
@@ -124,9 +139,11 @@ struct FlowLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
         for view in subviews {
-            let size = view.sizeThatFits(.unspecified)
+            var size = view.sizeThatFits(.unspecified)
+            size.width = min(size.width, bounds.width)
             if x + size.width > bounds.maxX, x > bounds.minX { x = bounds.minX; y += rowHeight + spacing; rowHeight = 0 }
-            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            // Never place a child wider than the row: very long chips shrink instead of overflowing.
+            view.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(width: min(size.width, bounds.width), height: size.height))
             x += size.width + spacing
             rowHeight = max(rowHeight, size.height)
         }
