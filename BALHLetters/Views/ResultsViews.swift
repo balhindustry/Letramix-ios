@@ -7,20 +7,54 @@ struct ResultsView: View {
         ScrollView {
             VStack(spacing: 18) {
                 if let game = model.game {
-                    Text("🏆").font(.system(size: 64))
-                    if let winner = game.standings.first {
-                        let tied = game.standings.filter { $0.place == 1 }.count > 1
-                        Text(tied ? model.text("Tasapeli!", "It’s a tie!") : model.text("\(winner.player.name) voitti!", "\(winner.player.name) wins!"))
-                            .font(.largeTitle.bold()).multilineTextAlignment(.center)
-                    }
+                    Podium(game: game)
                     GameSummary(game: game)
-                    Button(model.text("Uusi peli samoilla pelaajilla", "Rematch")) { model.rematch() }.buttonStyle(PrimaryButton())
-                    Button(model.text("Alkuun", "Home")) { model.screen = .welcome }.font(.headline)
+                    Button { model.rematch() } label: { Label(model.text("Uusi peli samoilla pelaajilla", "Rematch"), systemImage: "arrow.counterclockwise") }
+                        .buttonStyle(PrimaryButton())
+                    Button(model.text("Alkuun", "Home")) { model.screen = .welcome }.buttonStyle(GhostButton())
                 } else {
-                    Button(model.text("Alkuun", "Home")) { model.screen = .welcome }
+                    Button(model.text("Alkuun", "Home")) { model.screen = .welcome }.buttonStyle(GhostButton())
                 }
             }
             .padding(20)
+        }
+    }
+}
+
+/// Top three on a podium; ties share a step.
+struct Podium: View {
+    @EnvironmentObject var model: GameModel
+    let game: Game
+    var body: some View {
+        let standings = game.standings
+        let tied = standings.filter { $0.place == 1 }.count > 1
+        VStack(spacing: 12) {
+            Text(tied ? model.text("Tasapeli!", "It’s a tie!") : model.text("\(standings.first?.player.name ?? "") voitti!", "\(standings.first?.player.name ?? "") wins!"))
+                .font(.system(size: 32, weight: .bold)).multilineTextAlignment(.center)
+            HStack(alignment: .bottom, spacing: 10) {
+                ForEach(podiumOrder(standings), id: \.id) { entry in
+                    VStack(spacing: 6) {
+                        Avatar(name: entry.player.name, index: entry.index, size: entry.place == 1 ? 52 : 42)
+                        Text(entry.player.name).font(.caption.weight(.bold)).lineLimit(1)
+                        Text("\(entry.player.points)").font(.system(.title2).weight(.bold))
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(entry.place == 1 ? Theme.gold : entry.place == 2 ? Color(.systemGray3) : Theme.coral.opacity(0.8))
+                            .frame(height: entry.place == 1 ? 90 : entry.place == 2 ? 64 : 44)
+                            .overlay(Text("\(entry.place)").font(.system(.title).weight(.bold)).foregroundStyle(entry.place == 3 ? Color.white : Color.black.opacity(0.75)))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.top, 10)
+    }
+
+    private func podiumOrder(_ standings: [Standing]) -> [Standing] {
+        let top = Array(standings.prefix(3))
+        switch top.count {
+        case 3: return [top[1], top[0], top[2]]
+        case 2: return [top[1], top[0]]
+        default: return top
         }
     }
 }
@@ -32,28 +66,18 @@ struct GameSummary: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Card {
-                ForEach(game.standings) { entry in
-                    HStack {
-                        Text(medal(entry.place)).font(.title2).frame(width: 36)
-                        Text(entry.player.name).font(.headline)
-                        Spacer()
-                        Text(model.text("\(game.words(of: entry.index).count) sanaa", "\(game.words(of: entry.index).count) words"))
-                            .font(.caption).foregroundStyle(.secondary)
-                        Text("\(entry.player.points)").font(.title3.bold().monospacedDigit()).frame(minWidth: 44, alignment: .trailing)
-                    }
-                }
+            HStack(spacing: 12) {
+                Stat(value: "\(game.turns.flatMap(\.words).count)", label: model.text("sanaa", "words"))
+                Stat(value: "\(game.turns.flatMap(\.words).reduce(0) { $0 + $1.tiles.count })", label: model.text("kirjainta", "letters"))
+                Stat(value: "\(game.players.reduce(0) { $0 + $1.points })", label: model.text("pistettä", "points"))
             }
             if let best = game.bestWord {
                 Card {
-                    Text(model.text("Paras sana", "Best word")).font(.headline)
+                    SectionTitle(text: model.text("Paras sana", "Best word"), trailing: game.players.indices.contains(best.player) ? game.players[best.player].name : "")
                     HStack {
-                        TileWord(word: best.word.tiles, size: 28)
+                        TileWord(word: best.word.tiles, size: 30)
                         Spacer()
-                        VStack(alignment: .trailing) {
-                            Text("+\(best.word.points)").font(.title3.bold()).foregroundStyle(Theme.green)
-                            Text(game.players.indices.contains(best.player) ? game.players[best.player].name : "").font(.caption)
-                        }
+                        Text("+\(best.word.points)").font(.system(.title2).weight(.bold)).foregroundStyle(Theme.green)
                     }
                 }
             }
@@ -61,17 +85,35 @@ struct GameSummary: View {
                 let words = game.words(of: index)
                 Card {
                     DisclosureGroup {
-                        if words.isEmpty { Text(model.text("Ei sanoja.", "No words.")).font(.caption).foregroundStyle(.secondary) }
-                        ForEach(words) { WordRow(word: $0) }
+                        if words.isEmpty { Text(model.text("Ei sanoja.", "No words.")).font(.caption).foregroundStyle(Theme.muted) }
+                        ForEach(words) { WordRow(word: $0).padding(.top, 8) }
                     } label: {
-                        Text(model.text("\(player.name): \(words.count) sanaa", "\(player.name): \(words.count) words")).font(.headline)
+                        HStack(spacing: 10) {
+                            Avatar(name: player.name, index: index, size: 30)
+                            Text(player.name).font(.headline)
+                            Spacer()
+                            Text(model.text("\(words.count) sanaa", "\(words.count) words")).font(.caption).foregroundStyle(Theme.muted)
+                            Text("\(player.points)").font(.system(.headline).weight(.semibold))
+                        }
                     }
+                    .tint(Theme.muted)
                 }
             }
         }
     }
+}
 
-    private func medal(_ place: Int) -> String { place == 1 ? "🥇" : place == 2 ? "🥈" : place == 3 ? "🥉" : "\(place)." }
+struct Stat: View {
+    let value: String
+    let label: String
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value).font(.system(.title).weight(.bold))
+            Text(label.uppercased()).font(.caption2.weight(.bold)).tracking(1).foregroundStyle(Theme.muted)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 14)
+        .background(Theme.surface).clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
 }
 
 struct HistoryView: View {
@@ -80,28 +122,44 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(model.history) { game in
-                    NavigationLink {
-                        ScrollView { GameSummary(game: game).padding() }
-                            .background(Theme.paper)
-                            .navigationTitle(game.startedAt.formatted(date: .abbreviated, time: .shortened))
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(game.startedAt.formatted(date: .abbreviated, time: .shortened)).font(.headline)
-                            Text(game.standings.map { "\($0.player.name) \($0.player.points)" }.joined(separator: " · "))
-                                .font(.subheadline).foregroundStyle(.secondary)
-                            Text(model.text("\(game.turns.flatMap(\.words).count) sanaa · \(game.rules.language.uppercased())",
-                                            "\(game.turns.flatMap(\.words).count) words · \(game.rules.language.uppercased())"))
-                                .font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                VStack(spacing: 12) {
+                    ForEach(model.history) { game in
+                        NavigationLink {
+                            ScrollView { GameSummary(game: game).padding() }
+                                .background(Theme.gradient.ignoresSafeArea())
+                                .navigationTitle(game.startedAt.formatted(date: .abbreviated, time: .shortened))
+                                                        } label: {
+                            Card(padding: 14) {
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(game.startedAt.formatted(date: .abbreviated, time: .shortened)).font(.headline)
+                                        Text(game.standings.map { "\($0.player.name) \($0.player.points)" }.joined(separator: "  ·  "))
+                                            .font(.subheadline).foregroundStyle(Theme.muted).lineLimit(2)
+                                        Text(model.text("\(game.turns.flatMap(\.words).count) sanaa · \(game.rules.language.uppercased())",
+                                                        "\(game.turns.flatMap(\.words).count) words · \(game.rules.language.uppercased())"))
+                                            .font(.caption).foregroundStyle(Theme.muted)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").foregroundStyle(Theme.muted)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            Button(model.text("Poista", "Delete"), systemImage: "trash", role: .destructive) {
+                                if let i = model.history.firstIndex(where: { $0.id == game.id }) { model.deleteHistory(at: IndexSet(integer: i)) }
+                            }
                         }
                     }
+                    if model.history.isEmpty { Text(model.text("Ei pelattuja pelejä.", "No games yet.")).foregroundStyle(Theme.muted).padding(.top, 40) }
                 }
-                .onDelete { model.deleteHistory(at: $0) }
+                .padding(18)
             }
+            .background(Theme.gradient.ignoresSafeArea())
             .navigationTitle(model.text("Pelihistoria", "Game history"))
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button(model.text("← Alkuun", "← Home")) { model.screen = .welcome } }
+                        .toolbar {
+                ToolbarItem(placement: .topBarLeading) { Button(model.text("Alkuun", "Home"), systemImage: "chevron.left") { model.screen = .welcome } }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(model.text("Tyhjennä", "Clear"), role: .destructive) { confirmClear = true }.disabled(model.history.isEmpty)
                 }
