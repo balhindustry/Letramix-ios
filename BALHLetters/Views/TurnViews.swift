@@ -37,23 +37,30 @@ struct WordRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 TileWord(word: word.tiles, size: 24)
-                HStack(spacing: 6) {
-                    if word.tiles.contains(jokerSymbol) { Text("= \(word.word.uppercased())").bold() }
-                    if let base = word.base { Text("← \(base.uppercased())") }
-                    Text(word.kind.label(model))
-                    Text(model.text("\(word.tiles.count) kirjainta", "\(word.tiles.count) letters"))
-                    if word.fromCamera { Image(systemName: "camera.fill") }
-                }
-                .font(.caption2).foregroundStyle(word.kind == .house ? Theme.coral : Theme.muted)
+                Text(details).lineLimit(1).minimumScaleFactor(0.75)
+                    .font(.caption2).foregroundStyle(word.kind == .house ? Theme.coral : Theme.muted)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
             Text("+\(word.points)").font(.system(.headline).weight(.semibold).monospacedDigit()).foregroundStyle(Theme.green)
+                .fixedSize()
             if let onRemove {
                 Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(Theme.muted) }
                     .buttonStyle(.plain)
+                    .fixedSize()
                     .accessibilityLabel(model.text("Poista", "Remove"))
             }
         }
+    }
+
+    /// One line: "= KOIRA · ← TALO · in word list · 5 letters · 📷"
+    private var details: String {
+        var parts: [String] = []
+        if word.tiles.contains(jokerSymbol) { parts.append("= \(word.word.uppercased())") }
+        if let base = word.base { parts.append("← \(base.uppercased())") }
+        parts.append(word.kind.label(model))
+        parts.append(model.text("\(word.tiles.count) kirjainta", "\(word.tiles.count) letters"))
+        if word.fromCamera { parts.append("📷") }
+        return parts.joined(separator: " · ")
     }
 }
 
