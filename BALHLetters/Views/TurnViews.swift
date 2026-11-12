@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The words saved during this turn, with a running total.
+/// The words saved during this turn, as chips, with a running total.
 struct TurnWords: View {
     @EnvironmentObject var model: GameModel
     @Binding var entry: String
@@ -9,42 +9,47 @@ struct TurnWords: View {
     var body: some View {
         if let game = model.game {
             Card {
-                HStack {
-                    Text(model.text("Tämän vuoron sanat", "Words this turn")).font(.headline)
-                    Spacer()
-                    Text(model.text("\(game.pending.count) sanaa · \(game.pendingPoints) p", "\(game.pending.count) words · \(game.pendingPoints) p"))
-                        .font(.subheadline.bold()).foregroundStyle(Theme.accent)
-                }
+                SectionTitle(text: model.text("Tämän vuoron sanat", "Words this turn"),
+                             trailing: model.text("\(game.pending.count) sanaa · \(game.pendingPoints) p", "\(game.pending.count) words · \(game.pendingPoints) p"))
                 if game.pending.isEmpty {
-                    Text(model.text("Ei vielä sanoja.", "No words yet.")).font(.footnote).foregroundStyle(.secondary)
+                    Text(model.text("Ei vielä sanoja.", "No words yet.")).font(.footnote).foregroundStyle(Theme.muted)
+                } else {
+                    FlowLayout(spacing: 8) {
+                        ForEach(game.pending.reversed()) { word in
+                            WordChip(word: word, onRemove: editable ? { () -> Void in withAnimation { model.remove(word) } } : nil)
+                                .onTapGesture { entry = word.tiles }
+                        }
+                    }
                 }
-                ForEach(game.pending.reversed()) { word in WordRow(word: word, onRemove: editable ? { model.remove(word) } : nil) }
             }
+            .animation(.spring(duration: 0.3), value: game.pending.count)
         }
     }
 }
 
+/// Full-detail row used in review, results and history.
 struct WordRow: View {
     @EnvironmentObject var model: GameModel
     let word: PlayedWord
     var onRemove: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 3) {
-                TileWord(word: word.tiles, size: 22)
-                HStack(spacing: 4) {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                TileWord(word: word.tiles, size: 24)
+                HStack(spacing: 6) {
                     if word.tiles.contains(jokerSymbol) { Text("= \(word.word.uppercased())").bold() }
-                    if let base = word.base { Text("← \(base)") }
+                    if let base = word.base { Text("← \(base.uppercased())") }
                     Text(word.kind.label(model))
+                    Text(model.text("\(word.tiles.count) kirjainta", "\(word.tiles.count) letters"))
                     if word.fromCamera { Image(systemName: "camera.fill") }
                 }
-                .font(.caption2).foregroundStyle(word.kind == .house ? Theme.coral : .secondary)
+                .font(.caption2).foregroundStyle(word.kind == .house ? Theme.coral : Theme.muted)
             }
             Spacer()
-            Text("+\(word.points)").font(.headline.monospacedDigit()).foregroundStyle(Theme.green)
+            Text("+\(word.points)").font(.system(.headline).weight(.semibold).monospacedDigit()).foregroundStyle(Theme.green)
             if let onRemove {
-                Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(.gray.opacity(0.6)) }
+                Button(role: .destructive, action: onRemove) { Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(Theme.muted) }
                     .buttonStyle(.plain)
                     .accessibilityLabel(model.text("Poista", "Remove"))
             }
@@ -65,22 +70,31 @@ struct WordEntry: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title ?? model.text("Kirjoita tai korjaa sana", "Type or fix a word")).font(.headline)
+            SectionTitle(text: title ?? model.text("Kirjoita tai korjaa sana", "Type or fix a word"))
             HStack(spacing: 8) {
-                TextField(model.text("esim. KALA tai K◇LA", "e.g. CAT or C◇T"), text: $text)
-                    .textFieldStyle(.roundedBorder)
+                TextField("", text: $text, prompt: Text(model.text("esim. KALA tai K◇LA", "e.g. CAT or C◇T")).foregroundStyle(Theme.muted))
+                    .darkField()
+                    .font(.system(.headline))
                     .textInputAutocapitalization(.characters)
                     .autocorrectionDisabled()
                     .focused($focused)
                     .submitLabel(.done)
                     .onSubmit(submit)
-                Button { text.append(jokerSymbol) } label: { Text("◇").font(.title3.bold()).frame(width: 40, height: 36) }
-                    .buttonStyle(.bordered)
-                    .accessibilityLabel(model.text("Lisää jokeri", "Insert joker"))
-                Button(action: submit) { Text("+\(TileRules.points(WordText.normalize(text)))").bold().frame(minWidth: 44, minHeight: 36) }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!canSubmit)
+                Button { text.append(jokerSymbol) } label: {
+                    Text("◇").font(.title3.bold()).frame(width: 46, height: 46).background(Theme.surfaceHigh).foregroundStyle(Theme.coral).clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(model.text("Lisää jokeri", "Insert joker"))
+                Button(action: submit) {
+                    Text("+\(TileRules.points(WordText.normalize(text)))").font(.system(.headline).weight(.semibold))
+                        .frame(minWidth: 52, minHeight: 46)
+                        .background(canSubmit ? Theme.accent : Theme.surfaceHigh).foregroundStyle(canSubmit ? Theme.ink : Theme.muted)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSubmit)
             }
+            if !text.isEmpty { TileWord(word: WordText.display(text), size: 22) }
             status
         }
         .disabled(!accepts)
@@ -98,23 +112,24 @@ struct WordEntry: View {
     @ViewBuilder private var status: some View {
         switch check {
         case .none:
-            if !accepts { Text(model.text("Paina Aloita, niin voit tallentaa sanoja.", "Press Start to save words.")).font(.caption).foregroundStyle(.secondary) }
+            if !accepts { Text(model.text("Paina Aloita, niin voit tallentaa sanoja.", "Press Start to save words.")).font(.caption).foregroundStyle(Theme.muted) }
         case .tooShort?:
-            Text(model.text("Vähintään 2 kirjainta.", "At least 2 letters.")).font(.caption).foregroundStyle(.secondary)
+            Text(model.text("Vähintään 2 kirjainta.", "At least 2 letters.")).font(.caption).foregroundStyle(Theme.muted)
         case .alreadyPlayed(let word)?:
-            Text(model.text("\(word.uppercased()) on jo pelattu tässä pelissä.", "\(word.uppercased()) was already played this game.")).font(.caption).foregroundStyle(.secondary)
+            Text(model.text("\(word.uppercased()) on jo pelattu tässä pelissä.", "\(word.uppercased()) was already played this game.")).font(.caption).foregroundStyle(Theme.muted)
         case .valid(let match)?:
             Text(match.kind == .inflected
                  ? model.text("✓ Taivutusmuoto sanasta \(match.base?.uppercased() ?? "")", "✓ Form of \(match.base?.uppercased() ?? "")")
                  : model.text("✓ Sana löytyy", "✓ Word found"))
                 .font(.caption.bold()).foregroundStyle(Theme.green)
         case .choose(let options)?:
-            Text(model.text("Mitä jokeri tarkoittaa? Valitse sana:", "What does the joker stand for? Pick one:")).font(.caption)
+            Text(model.text("Mitä jokeri tarkoittaa? Valitse sana:", "What does the joker stand for? Pick one:")).font(.caption).foregroundStyle(Theme.muted)
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(options, id: \.word) { option in
                         Button(option.word.uppercased()) { if case .saved = model.add(text, chosen: option.word) { text = "" } }
-                            .buttonStyle(.bordered)
+                            .font(.subheadline.bold()).padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(Theme.surfaceHigh).clipShape(Capsule()).foregroundStyle(Theme.text)
                     }
                 }
             }
@@ -124,7 +139,7 @@ struct WordEntry: View {
                 Button(model.text("Hyväksy silti – kaikki pelaajat samaa mieltä", "Accept anyway – all players agree")) {
                     if case .saved = model.add(text, house: true) { text = "" }
                 }
-                .font(.caption.bold())
+                .font(.caption.bold()).foregroundStyle(Theme.coral)
             }
         }
     }
@@ -138,19 +153,27 @@ struct ReviewPanel: View {
     var body: some View {
         if let game = model.game {
             VStack(spacing: 16) {
-                VStack(spacing: 6) {
+                VStack(spacing: 4) {
                     Text(game.remaining == 0 ? model.text("Aika loppui!", "Time’s up!") : model.text("Vuoro valmis", "Turn complete"))
-                        .font(.largeTitle.bold())
-                    Text(model.text("\(game.currentPlayer?.name ?? "") sai \(game.pending.count) sanaa", "\(game.currentPlayer?.name ?? "") made \(game.pending.count) words"))
-                        .font(.headline)
-                    Text("+\(game.pendingPoints) p")
-                        .font(.system(size: 54, weight: .heavy, design: .rounded)).foregroundStyle(Theme.green)
+                        .font(.system(size: 32, weight: .bold))
+                    Text(model.text("\(game.currentPlayer?.name ?? "") · \(game.pending.count) sanaa · \(game.pending.reduce(0) { $0 + $1.tiles.count }) kirjainta",
+                                    "\(game.currentPlayer?.name ?? "") · \(game.pending.count) words · \(game.pending.reduce(0) { $0 + $1.tiles.count }) letters"))
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(Theme.muted)
+                    Text("+\(game.pendingPoints)")
+                        .font(.system(size: 72, weight: .bold)).foregroundStyle(Theme.green)
                         .contentTransition(.numericText())
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, 6)
 
-                TurnWords(entry: $entry)
+                Card {
+                    SectionTitle(text: model.text("Tarkista sanat", "Check the words"), trailing: model.text("✕ poistaa", "✕ removes"))
+                    if game.pending.isEmpty { Text(model.text("Ei sanoja tällä vuorolla.", "No words this turn.")).font(.footnote).foregroundStyle(Theme.muted) }
+                    ForEach(game.pending) { word in
+                        WordRow(word: word) { withAnimation { model.remove(word) } }
+                        if word.id != game.pending.last?.id { Divider().overlay(Theme.line) }
+                    }
+                }
                 Card { WordEntry(text: $entry, title: model.text("Puuttuiko sana? Lisää se", "Missing a word? Add it")) }
 
                 Button {
@@ -163,8 +186,6 @@ struct ReviewPanel: View {
                         .multilineTextAlignment(.center)
                 }
                 .buttonStyle(PrimaryButton(color: Theme.green))
-                Text(model.text("Poista väärin tunnistetut sanat ✕-napista ennen hyväksymistä.", "Remove misread words with ✕ before accepting."))
-                    .font(.caption).foregroundStyle(.secondary)
             }
             .animation(.default, value: game.pendingPoints)
         }
@@ -181,14 +202,17 @@ struct Scoreboard: View {
     var body: some View {
         if let game = model.game {
             Card {
-                Text(model.text("Pisteet", "Scores")).font(.headline)
+                SectionTitle(text: model.text("Pisteet", "Scores"))
                 ForEach(Array(game.players.enumerated()), id: \.element.id) { index, player in
-                    HStack {
-                        if index == game.current && game.phase != .finished { Image(systemName: "arrowtriangle.right.fill").font(.caption).foregroundStyle(Theme.accent) }
-                        Text(player.name).fontWeight(index == game.current ? .bold : .regular)
+                    HStack(spacing: 10) {
+                        Avatar(name: player.name, index: index, size: 30)
+                        Text(player.name).font(.subheadline.weight(index == game.current ? .heavy : .medium))
+                        if index == game.current && game.phase != .finished {
+                            Circle().fill(Theme.accent).frame(width: 6, height: 6)
+                        }
                         Spacer()
-                        Text(model.text("\(game.words(of: index).count) sanaa", "\(game.words(of: index).count) words")).font(.caption).foregroundStyle(.secondary)
-                        Text("\(player.points)").font(.headline.monospacedDigit()).frame(minWidth: 40, alignment: .trailing)
+                        Text(model.text("\(game.words(of: index).count) sanaa", "\(game.words(of: index).count) words")).font(.caption).foregroundStyle(Theme.muted)
+                        Text("\(player.points)").font(.system(.headline).weight(.semibold).monospacedDigit()).frame(minWidth: 40, alignment: .trailing)
                     }
                 }
             }

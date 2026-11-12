@@ -80,6 +80,32 @@ func check(_ condition: @autoclosure () -> Bool, _ label: String, line: Int = #l
         early.endTurn(); early.finish()
         check(early.players[0].points == TileRules.points("KALA") && early.phase == .finished, "end mid-turn keeps words")
 
+        // Tile grouping: single tiles become words, horizontally and vertically
+        func tile(_ t: String, _ col: Int, _ row: Int, size: CGFloat = 0.06) -> TextFragment {
+            TextFragment(text: t, box: CGRect(x: 0.1 + CGFloat(col) * size * 1.15, y: 0.8 - CGFloat(row) * size * 1.15, width: size, height: size), confidence: 0.9)
+        }
+        var board: [TextFragment] = []
+        for (i, c) in "KALA".enumerated() { board.append(tile(String(c), i, 0)) }          // row 0: K A L A
+        for (i, c) in "TALO".enumerated() { board.append(tile(String(c), i, 6)) }          // row 6: T A L O (below the column)
+        for (i, c) in "ISSA".enumerated() { board.append(tile(String(c), 1, i + 1)) }      // column under the A of KALA → "AISSA"
+        let found = TileGrouping.words(from: board)
+        let texts = Set(found.map(\.text))
+        check(texts.contains("KALA") && texts.contains("TALO"), "horizontal words \(texts)")
+        check(texts.contains("AISSA"), "vertical word through shared tile \(texts)")
+        check(found.first { $0.text == "KALA" }?.letterCount == 4, "letter count")
+        check(found.first { $0.text == "KALA" }?.points == TileRules.points("KALA"), "candidate points")
+        check(!texts.contains("KALATALO"), "stacked words not merged")
+        // Gap splits a row into two words
+        let spaced = "KALA".enumerated().map { tile(String($0.element), $0.offset, 0) } + "TALO".enumerated().map { tile(String($0.element), $0.offset + 6, 0) }
+        check(Set(TileGrouping.words(from: spaced).map(\.text)) == ["KALA", "TALO"], "gap splits words")
+        // OCR already joined letters: keep as one word and extend with a loose tile
+        let joined = [TextFragment(text: "KAL", box: CGRect(x: 0.1, y: 0.5, width: 0.2, height: 0.06), confidence: 0.8), tile("A", 3, 0, size: 0.06)]
+        check(TileGrouping.words(from: [joined[0], TextFragment(text: "A", box: CGRect(x: 0.31, y: 0.5, width: 0.06, height: 0.06), confidence: 0.9)]).map(\.text) == ["KALA"], "joined fragment extended")
+        check(TileGrouping.letters(in: "K1A1L2A1") == ["KALA"], "tile numbers stripped")
+        check(TileGrouping.letters(in: "kala talo") == ["KALA", "TALO"], "split on space")
+        check(TileGrouping.letters(in: "K◊LA") == ["K◇LA"], "joker unified")
+        _ = joined
+
         // Persistence round-trip
         let tmp = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("balhletters-\(UUID().uuidString)")
         let store = GameStore(directory: tmp)
